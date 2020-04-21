@@ -17,7 +17,10 @@ class APIFeatures {
   }
 
   sort() {
-    this.query = this.query.sort(this.queryString.sort.replace(',', ' '));
+    if(this.queryString.sort) {
+      this.query = this.query.sort(this.queryString.sort.replace(',', ' '));
+    }
+    
     return this;
   }
 
