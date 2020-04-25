@@ -111,5 +111,4 @@ tourschema.virtual('durationWeeks').get(function() {
 });
 
 const Tour = mongoose.model('Tour', tourschema);  
-
 module.exports = Tour;
