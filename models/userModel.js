@@ -23,7 +23,8 @@ const userSchema = mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlength: 8
+    minlength: 8,
+    select: false
   },
   passwordConfirm: {
     type: String,
@@ -33,8 +34,10 @@ const userSchema = mongoose.Schema({
         return val === this.password;
       },
       message: `Password doesn't match`
-    }
+    },
+    select: false
   },
+  passwordChangedAt: Date
 });
 
 userSchema.pre('save', async function(next) {
@@ -47,6 +50,21 @@ userSchema.pre('save', async function(next) {
   
   next();
 });
+
+userSchema.methods.correctPassword = function(candidatePassword, password) {
+  return bcrypt.compare(candidatePassword, password);
+}
+
+userSchema.methods.passwordHasChanged = function(JWTTimestamp) {
+  if(this.passwordChangedAt) {
+    const changedPassword = parseInt(this.passwordChangedAt.getTime() / 1000);
+    // si el issued token es menor a la última vez que se cambió la contraseña
+    // rebotar el loggin (true)
+    return JWTTimestamp < changedPassword;
+  }
+  
+  return false;
+}
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;
