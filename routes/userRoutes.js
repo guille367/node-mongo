@@ -5,6 +5,15 @@ const authController = require('./../controllers/authController');
 const router = express.Router();
 
 router
+  .route('/reset-password')
+  .post(authController.resetPassword);
+  
+router
+  .route('/forgot-password')
+  .post(authController.forgotPassword);
+
+
+router
   .route('/signup')
   .post(authController.signup);
 

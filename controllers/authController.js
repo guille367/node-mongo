@@ -9,12 +9,14 @@ const signToken = id => {
 }
 
 exports.signup = catchAsync(async(req, res) => {
-  const { name, email, password, passwordConfirm } = req.body;
+  const { name, email, password, passwordConfirm, role } = req.body;
+
   const newUser = await User.create({
     name,
     email,
     password,
-    passwordConfirm
+    passwordConfirm,
+    role
   });
 
   const token = signToken(newUser._id);
@@ -36,13 +38,16 @@ exports.login = catchAsync(async(req, res, next) => {
   }
 
   const user = await User.findOne({ email }).select('+password');
-  console.log(user, password)
+  
   if(!user || !(await user.correctPassword(password, user.password))) {
     return next(new AppError(`User or password incorrect`, 401));
   }
 
+  const token = signToken(user._id);
+
   res.status(200).json({
     status: 'success',
+    token,
     data: { user }
   });
 });
@@ -50,10 +55,10 @@ exports.login = catchAsync(async(req, res, next) => {
 exports.protect = catchAsync(async (req, res, next) => {
   const { authorization } = req.headers;
   let token;
-
   if(authorization && authorization.startsWith('Bearer')) {
     token = authorization.split(' ')[1];
   }
+  console.log('authorization', authorization)
 
   if(!token) {
     return next(new AppError('You are not logged in', 401));
@@ -67,10 +72,39 @@ exports.protect = catchAsync(async (req, res, next) => {
     return next(new AppError('The user belonging to the token does not longer exits', 401));
   }
 
-  if(user.passwordHasChanged(decodedPayload.iat)) {
+  if(freshUser.passwordHasChanged(decodedPayload.iat)) {
     return next(new AppError(`Recently changed password, Please login again`, 401))
   }
 
   req.user = freshUser;
   next();
-})
+});
+
+exports.restrictTo = (...roles) => catchAsync(async (req, res, next) => {
+  if(!roles.includes(req.user.role)) {
+    return next(new AppError('You do not have permission to perform this action', 403));
+  }
+
+  next();
+});
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if(!user) {
+    return next(new AppError('User does not exists', 404));
+  }
+
+  user.passwordResetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: 'succes',
+    data: { token: user.passwordResetToken }
+  })
+});
+
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  next();
+});
