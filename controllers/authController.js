@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const { promisify } = require('util');
+const sendMail = require('../utils/email')
 
 const signToken = id => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
@@ -95,10 +96,19 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   if(!user) {
     return next(new AppError('User does not exists', 404));
   }
-
-  user.passwordResetToken = user.createPasswordResetToken();
+  
+  const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
-
+  
+  const resetUrl = `${req.protocol}://${req.get('host')}/api/v1/reset-password/${resetToken}`;
+  
+  const message = `Forgot your password? Submit a patch request to this url ${resetUrl} with your new password`;
+  await sendMail({ 
+    email: user.email,
+    subject: 'Your password reset token (valid for 10min)', 
+    message
+  })
+  console.log(user)
   res.status(200).json({
     status: 'succes',
     data: { token: user.passwordResetToken }
@@ -106,5 +116,13 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
 });
 
 exports.resetPassword = catchAsync(async (req, res, next) => {
-  next();
+  // const user = await User.findOne({ email: req.body.email });
+  
+  // if(!user) {
+  //   return next(new AppError('There is no user with this mail address'));
+  // }
+
+  // const resetToken
+
+  // next();
 });
