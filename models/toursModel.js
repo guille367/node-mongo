@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
+// const User = require('../models/userModel');
 // const validator = require('validator');
 
 const tourschema = mongoose.Schema({
@@ -84,16 +85,59 @@ const tourschema = mongoose.Schema({
   },
   secretTour: {
     type: Boolean
-  }
+  },
+  startLocation: {
+    type: {
+      type: String,
+      default: 'Point',
+      enum: ['Point']
+    },
+    coordinates: [Number],
+    address: String,
+    description: String
+  },
+  locations: [{
+    type: {
+      type: String,
+      default: 'Point',
+      enum: ['Point']
+    },
+    coordinates: [Number],
+    address: String,
+    description: String,
+    day: Number
+  }],
+  guides: [{
+    type: mongoose.Schema.ObjectId,
+    ref: 'User'
+  }]
+}, {
+  toObject: { virtuals: true },
+  toJson: { virtuals: true }
 }); 
 
 tourschema.set('toObject', { virtuals: true })
 tourschema.set('toJSON', { virtuals: true })
 
+tourschema.pre(/^find/, function(next) {
+  this.populate({
+    path: 'guides',
+    select: '-__v -passwordChangedAt'
+  });
+  next();
+});
+
 tourschema.pre('save', function(next) {
   this.slug = slugify(this.name, { lower: true });
   next();
 });
+
+// Una aproximación al embeding
+// tourschema.pre('save', async function(next) {
+//   const guidesPromises = this.guides.map(async id => User.findById(id));
+//   this.guides = await Promise.all(guidesPromises);
+//   next();
+// });
 
 tourschema.pre('find', function(next) {
   this.find({ secretTour: { $ne: true } });
